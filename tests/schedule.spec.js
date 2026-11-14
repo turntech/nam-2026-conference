@@ -22,6 +22,47 @@ test.describe('Schedule', () => {
     await expect(rail).not.toContainText('today');
   });
 
+  test('several tracks can be selected at once', async ({ page }) => {
+    const days = await conferenceDays();
+    const tracks = (await (await fetch(`${API}/bootstrap`)).json()).tracks;
+    const count = async (slugs) =>
+      (await (await fetch(`${API}/sessions?day=${days[1]}&trackSlug=${slugs.join(',')}`)).json()).length;
+    const [a, b] = tracks;
+    const label = (t) => t.shortName ?? t.name;
+    const pill = (t) => page.getByRole('button', { name: label(t), exact: true });
+    const total = page.getByTestId('result-count');
+    const expectCount = async (slugs) =>
+      expect(total).toHaveText(new RegExp(`^${await count(slugs)} sessions?$`));
+
+    await visit(page, `/schedule?day=${days[1]}`);
+    const filters = page.getByRole('button', { name: /^Filters/ });
+    if (await filters.isVisible()) await filters.click();
+
+    await pill(a).click();
+    await pill(b).click();
+    await waitForResults(page);
+    await expect(pill(a)).toHaveAttribute('aria-pressed', 'true');
+    await expect(pill(b)).toHaveAttribute('aria-pressed', 'true');
+    await expectCount([a.slug, b.slug]);
+    await expect(page.getByTestId('grid-blocked-notice')).toContainText('track filter');
+    await expect(page.getByTestId('view-grid')).toBeDisabled();
+    await shotForPR(page, 'two tracks selected on the schedule');
+
+    await pill(a).click();
+    await expect(pill(a)).toHaveAttribute('aria-pressed', 'false');
+    await expectCount([b.slug]);
+
+    await pill(b).click();
+    await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expectCount([]);
+
+    await pill(a).click();
+    await pill(b).click();
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await expect(pill(a)).toHaveAttribute('aria-pressed', 'false');
+    await expectCount([]);
+  });
+
   test('switching day changes the results', async ({ page }) => {
     await visit(page, '/schedule?view=list');
     await waitForResults(page);
