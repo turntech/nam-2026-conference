@@ -4,6 +4,7 @@ import { SESSION_SELECT, toUser, toSpeaker, toSession } from '../lib/query.js';
 import { reserveSeat, releaseSeat, seatState } from '../lib/seats.js';
 import { attendanceState, checkIn, rateSession } from '../lib/attendance.js';
 import { todayFor, scheduleFor } from '../lib/agenda.js';
+import { askAssistant } from '../lib/assistant.js';
 import { agendaCalendar, baseUrlFor } from '../lib/ical.js';
 
 export const usersRouter = Router();
@@ -30,6 +31,7 @@ const saveNote = db.prepare(`INSERT INTO interest_notes (user_id, body, updated_
   ON CONFLICT(user_id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at`);
 const deleteNote = db.prepare('DELETE FROM interest_notes WHERE user_id = ?');
 const NOTE_LIMIT = 500;
+const allProgramme = db.prepare(`${SESSION_SELECT} ORDER BY s.day, s.starts_at, s.id`);
 
 /** Sessions this user is presenting, if their account is linked to a speaker. */
 const speakingSessions = (speakerId) =>
@@ -168,6 +170,31 @@ usersRouter.put('/:id/interest-note', (req, res) => {
   }
   saveNote.run(req.params.id, text);
   res.json({ text });
+});
+
+// Ask what to attend. Sends the model the question, the saved interests text and
+// the programme only — never the users row. Stores nothing. Unavailable is a 200.
+const ASK_LIMIT = 300;
+usersRouter.post('/:id/ask', async (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  const question = req.body?.question;
+  if (typeof question !== 'string' || question.trim() === '') {
+    return res.status(400).json({ error: 'question must be a non-blank string' });
+  }
+  if (Array.from(question).length > ASK_LIMIT) {
+    return res.status(400).json({ error: `question must be at most ${ASK_LIMIT} characters` });
+  }
+  const programme = allProgramme.all().map((r) => ({
+    id: r.id, title: r.title, trackName: r.track_name, day: r.day, startsAt: r.starts_at,
+  }));
+  const ids = await askAssistant({
+    question: question.trim(),
+    interests: getNote.get(req.params.id)?.body ?? '',
+    programme,
+  });
+  if (!ids) return res.json({ available: false });
+  const byId = new Map(programme.map((p) => [p.id, p]));
+  res.json({ available: true, sessions: ids.map((id) => byId.get(id)) });
 });
 
 usersRouter.put('/:id/follows/:speakerId', (req, res) => {

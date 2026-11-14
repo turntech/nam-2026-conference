@@ -69,6 +69,7 @@ export function client(base) {
   return {
     get: (path, headers) => send('GET', path, undefined, headers),
     put: (path, body) => send('PUT', path, body),
+    post: (path, body) => send('POST', path, body),
     del: (path) => send('DELETE', path),
     /** The body of a GET that is expected to succeed. */
     async json(path) {

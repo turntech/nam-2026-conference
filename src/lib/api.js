@@ -63,5 +63,7 @@ export const sessionCalendarUrl = (sessionId) => `/api/sessions/${sessionId}.ics
 export const getInterestNote = (userId) => api(`/users/${userId}/interest-note`);
 export const saveInterestNote = (userId, text) =>
   api(`/users/${userId}/interest-note`, { method: 'PUT', body: JSON.stringify({ text }) });
+export const askAssistant = (userId, question) =>
+  api(`/users/${userId}/ask`, { method: 'POST', body: JSON.stringify({ question }) });
 export const followSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'PUT' });
 export const unfollowSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'DELETE' });
