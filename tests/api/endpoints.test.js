@@ -123,6 +123,17 @@ describe('Every endpoint answers', () => {
     }
   });
 
+  test('trackSlug takes a comma list and returns the union', async () => {
+    const [a, b] = (await api.json('/bootstrap')).tracks.map((t) => t.slug);
+    const ofA = await api.json(`/sessions?trackSlug=${a}`);
+    const ofB = await api.json(`/sessions?trackSlug=${b}`);
+    const both = await api.json(`/sessions?trackSlug=${a},${b}`);
+    assert.equal(both.length, ofA.length + ofB.length);
+    assert.ok(both.length > ofA.length && both.length > ofB.length);
+    const spaced = await api.json(`/sessions?trackSlug=${encodeURIComponent(` ${a} , ${b},`)}`);
+    assert.equal(spaced.length, both.length);
+  });
+
   test('the health check reports ok and the session count', async () => {
     const res = await api.get('/health');
     assert.equal(res.status, 200, `GET /health → ${res.status}`);
