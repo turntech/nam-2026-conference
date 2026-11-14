@@ -178,6 +178,13 @@ limit or when unchanged) and `interests-clear`. It reads and writes only
 seats doc) for `currentUserId` and reads nothing about seats, so it shows with
 zero seats. The text is in no other payload and not on My Agenda.
 
+**`AskBox`** (`ask-box`, after `InterestsBox`) — one question field (`ask-input`, 300
+characters) and `ask-submit`; `askAssistant(userId, question)` posts to
+`/api/users/:id/ask` (agenda doc). Local state only. Answers render as `ask-results`
+with one `ask-result` link per session to `/sessions/:id` (track, day, time);
+`ask-empty` for no matches, `ask-unavailable` ("The assistant is not available right
+now") when the API says `available: false` or the call fails.
+
 **`RouteChange`** — on `pathname` change only (not search), scrolls to top and
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
 scheduled here".

@@ -5,11 +5,13 @@ read_when: touching My Agenda, an attendee's day or schedule, suggestions, clash
 files:
   - server/lib/agenda.js
   - server/lib/ical.js
+  - server/lib/assistant.js
   - src/pages/MyAgendaPage.jsx
 tests:
   - tests/home.spec.js
   - tests/api/agenda.test.js
   - tests/api/calendar.test.js
+  - tests/api/ask.test.js
   - tests/unit/ical.test.js
 related: [seats, attendance, clock, venues, schedule, speakers, ui]
 ---
@@ -91,6 +93,20 @@ local `DTSTART`/`DTEND`, `UID:orbit-session-<id>@orbitconf.dev`, LOCATION
 `room, venue`, DESCRIPTION `track · format\n\nabstract`; every line goes through
 `fold` (75 octets, byte-aware) and text through `escape`. `wrap()` adds
 `METHOD:PUBLISH` and `X-WR-CALNAME`, CRLF-joined with a trailing CRLF.
+
+### Asking the assistant
+
+`POST /api/users/:id/ask` `{ question }` (404 unknown attendee; 400 unless a non-blank
+string of at most 300 characters). `server/lib/assistant.js` `askAssistant` calls
+OpenRouter `/chat/completions` with only the question, the saved interest-note text and
+the programme (id, title, track, day, start) — never the `users` row, so no name or
+email. The answer is reduced to integer ids in the programme, de-duplicated, first 5, in
+the model's order. Responds `200 { available: true, sessions: [{ id, title, trackName,
+day, startsAt }] }` or `200 { available: false }` (no key, non-2xx, 20 s timeout,
+unparseable output). Nothing is stored. Config: `OPENROUTER_API_KEY` (read per call;
+`.env` loaded once, gitignored), `OPENROUTER_MODEL`, `OPENROUTER_BASE_URL`. Tests point
+the base URL at a local `node:http` stub (`tests/api/ask.test.js`); the browser spec
+stubs `**/api/users/*/ask` with `page.route`, lane `home.ask`.
 
 ## Invariants
 

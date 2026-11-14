@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 import * as api from '../lib/api.js';
-import { relativeDate, time as fmtTime } from '../lib/format.js';
+import { relativeDate, shortDay, time as fmtTime } from '../lib/format.js';
 import { SponsorMarquee } from '../components/SponsorMarquee.jsx';
 import { Reveal } from '../components/Reveal.jsx';
 import { HeroMedia } from '../components/HeroMedia.jsx';
@@ -180,6 +180,66 @@ function InterestsBox() {
   );
 }
 
+const ASK_LIMIT = 300;
+
+/** Free-text question answered with programme sessions; nothing is kept. */
+function AskBox() {
+  const { currentUserId } = useConference();
+  const [question, setQuestion] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [answer, setAnswer] = useState(null); // null | { available, sessions }
+
+  async function ask(e) {
+    e.preventDefault();
+    if (!question.trim() || busy) return;
+    setBusy(true);
+    try {
+      setAnswer(await api.askAssistant(currentUserId, question));
+    } catch {
+      setAnswer({ available: false });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-hairline bg-surface p-4 sm:p-5" data-testid="ask-box">
+      <form onSubmit={ask}>
+        <label htmlFor="ask-input" className="block text-sm font-semibold">Ask what to attend</label>
+        <div className="mt-2 flex gap-2">
+          <input id="ask-input" data-testid="ask-input" value={question} maxLength={ASK_LIMIT}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="What should I see about cloud costs on Day 2?"
+            className="min-w-0 flex-1 rounded-lg border border-hairline bg-raised p-3 text-sm" />
+          <Button type="submit" variant="primary" data-testid="ask-submit"
+            disabled={busy || !question.trim()}>{busy ? 'Asking…' : 'Ask'}</Button>
+        </div>
+      </form>
+      {answer && !answer.available && (
+        <p className="mt-3 text-sm text-muted" data-testid="ask-unavailable">The assistant is not available right now</p>
+      )}
+      {answer?.available && answer.sessions.length === 0 && (
+        <p className="mt-3 text-sm text-muted" data-testid="ask-empty">No matching sessions</p>
+      )}
+      {answer?.available && answer.sessions.length > 0 && (
+        <ul className="mt-3 space-y-2" data-testid="ask-results">
+          {answer.sessions.map((s) => (
+            <li key={s.id}>
+              <Link to={`/sessions/${s.id}`} data-testid="ask-result"
+                className="block rounded-lg border border-hairline bg-raised p-3 text-sm hover:border-accent">
+                <span className="font-semibold">{s.title}</span>
+                <span className="block text-[13px] text-muted">
+                  {s.trackName} · {shortDay(s.day)} · {fmtTime(s.startsAt)}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function HomePage() {
   const { conference } = useConference();
   useDocumentTitle("ORBIT '26");
@@ -191,6 +251,7 @@ export function HomePage() {
       <HeroBar conference={conference} />
       <QuickLinks />
       <InterestsBox />
+      <AskBox />
       <Reveal><LatestAnnouncement /></Reveal>
       <SponsorMarquee />
     </div>

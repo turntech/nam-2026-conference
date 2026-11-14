@@ -100,3 +100,35 @@ test.describe('Interests box', () => {
     await expect(page.getByTestId('interests-remaining')).toHaveText('500 left');
   });
 });
+
+test.describe('Ask the assistant', () => {
+  test('ask the assistant and follow a result', async ({ page, request }, testInfo) => {
+    const lane = await laneFor('home.ask', testInfo);
+    const all = await (await request.get(`${API}/sessions`)).json();
+    const sessions = Array.isArray(all) ? all : all.sessions;
+    const [a, b] = sessions;
+    const shape = (s) => ({ id: s.id, title: s.title, trackName: s.track.name, day: s.day, startsAt: s.startsAt });
+    let mode = 'ok';
+    await page.route('**/api/users/*/ask', (route) => route.fulfill({
+      json: mode === 'ok' ? { available: true, sessions: [shape(a), shape(b)] } : { available: false },
+    }));
+
+    await visit(page, '/', { as: lane.user, at: await momentOn(0, '08:00') });
+    await page.getByTestId('ask-input').fill('What should I see about cloud costs?');
+    await page.getByTestId('ask-submit').click();
+    await expect(page.getByTestId('ask-result')).toHaveCount(2);
+    await shotForPR(page, 'Answer to a question on Home');
+
+    // the rest of Home still works when the assistant is down
+    mode = 'down';
+    await page.getByTestId('ask-submit').click();
+    await expect(page.getByTestId('ask-unavailable')).toHaveText('The assistant is not available right now');
+    await expect(page.getByTestId('interests-box')).toBeVisible();
+    await expect(page.getByTestId('quick-links')).toBeVisible();
+
+    mode = 'ok';
+    await page.getByTestId('ask-submit').click();
+    await page.getByTestId('ask-result').first().click();
+    await expect(page).toHaveURL(new RegExp(`/sessions/${a.id}$`));
+  });
+});
