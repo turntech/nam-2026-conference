@@ -60,5 +60,8 @@ export const rateSession = (userId, sessionId, payload) =>
 export const agendaCalendarUrl = (userId) => `/api/users/${userId}/agenda.ics`;
 export const sessionCalendarUrl = (sessionId) => `/api/sessions/${sessionId}.ics`;
 
+export const getInterestNote = (userId) => api(`/users/${userId}/interest-note`);
+export const saveInterestNote = (userId, text) =>
+  api(`/users/${userId}/interest-note`, { method: 'PUT', body: JSON.stringify({ text }) });
 export const followSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'PUT' });
 export const unfollowSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'DELETE' });

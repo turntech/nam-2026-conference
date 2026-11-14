@@ -195,6 +195,14 @@ CREATE TABLE IF NOT EXISTS speaker_follows (
   PRIMARY KEY (user_id, speaker_id)
 );
 
+-- Free text an attendee wrote about themselves. Its own table so no users
+-- payload carries it; only /users/:id/interest-note reads it.
+CREATE TABLE IF NOT EXISTS interest_notes (
+  user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  body       TEXT NOT NULL,
+  updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS ratings (
   id         INTEGER PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -266,6 +274,7 @@ export function migrate() {
 export function dropAll() {
   db.pragma('foreign_keys = OFF');
   db.exec(`
+    DROP TABLE IF EXISTS interest_notes;
     DROP TABLE IF EXISTS ratings;
     DROP TABLE IF EXISTS check_ins;
     DROP TABLE IF EXISTS reservations;

@@ -25,6 +25,12 @@ const myRatings = db.prepare('SELECT session_id, stars FROM ratings WHERE user_i
 const follow = db.prepare('INSERT OR IGNORE INTO speaker_follows (user_id, speaker_id) VALUES (?, ?)');
 const unfollow = db.prepare('DELETE FROM speaker_follows WHERE user_id = ? AND speaker_id = ?');
 
+const getNote = db.prepare('SELECT body FROM interest_notes WHERE user_id = ?');
+const saveNote = db.prepare(`INSERT INTO interest_notes (user_id, body, updated_at) VALUES (?, ?, datetime('now'))
+  ON CONFLICT(user_id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at`);
+const deleteNote = db.prepare('DELETE FROM interest_notes WHERE user_id = ?');
+const NOTE_LIMIT = 500;
+
 /** Sessions this user is presenting, if their account is linked to a speaker. */
 const speakingSessions = (speakerId) =>
   (speakerId ? presenting.all(speakerId).map((r) => toSession(r)) : []);
@@ -141,6 +147,27 @@ usersRouter.get('/:id/reservations/:sessionId', (req, res) => {
   const state = seatState(Number(req.params.sessionId), Number(req.params.id));
   if (!state) return res.status(404).json({ error: 'Session not found' });
   res.json(state);
+});
+
+// The attendee's own words about their interests. Returned only here.
+usersRouter.get('/:id/interest-note', (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  res.json({ text: getNote.get(req.params.id)?.body ?? '' });
+});
+
+usersRouter.put('/:id/interest-note', (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  const text = req.body?.text;
+  if (typeof text !== 'string') return res.status(400).json({ error: 'text must be a string' });
+  if (Array.from(text).length > NOTE_LIMIT) {
+    return res.status(400).json({ error: `text must be at most ${NOTE_LIMIT} characters` });
+  }
+  if (text.trim() === '') {
+    deleteNote.run(req.params.id);
+    return res.json({ text: '' });
+  }
+  saveNote.run(req.params.id, text);
+  res.json({ text });
 });
 
 usersRouter.put('/:id/follows/:speakerId', (req, res) => {

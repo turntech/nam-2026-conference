@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
@@ -8,6 +9,7 @@ import { Reveal } from '../components/Reveal.jsx';
 import { HeroMedia } from '../components/HeroMedia.jsx';
 import { Button, Chip, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useToast } from '../components/Toaster.jsx';
 
 /**
  * A slim bar, not a brochure.
@@ -127,6 +129,57 @@ function LatestAnnouncement() {
   );
 }
 
+const NOTE_LIMIT = 500;
+const countChars = (s) => Array.from(s).length;
+
+/** Optional free text about yourself. Shown to everyone, seats or not; read nowhere else. */
+function InterestsBox() {
+  const { currentUserId } = useConference();
+  const toast = useToast();
+  const { data } = useFetch(() => api.getInterestNote(currentUserId), [currentUserId]);
+  const [text, setText] = useState('');
+  const [saved, setSaved] = useState('');
+
+  useEffect(() => {
+    setText(data?.text ?? '');
+    setSaved(data?.text ?? '');
+  }, [data]);
+
+  const left = NOTE_LIMIT - countChars(text);
+
+  async function save(next) {
+    try {
+      const res = await api.saveInterestNote(currentUserId, next);
+      setText(res.text);
+      setSaved(res.text);
+      toast({ message: res.text ? 'Interests saved' : 'Interests cleared', icon: 'info' });
+    } catch (err) {
+      toast({ message: `Could not save: ${err.message}`, icon: 'alert' });
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-hairline bg-surface p-4 sm:p-5" data-testid="interests-box">
+      <label htmlFor="interests-input" className="block text-sm font-semibold">
+        Describe your interests in your own words <span className="font-normal text-muted">(optional)</span>
+      </label>
+      <textarea id="interests-input" data-testid="interests-input" rows={3} value={text}
+        onChange={(e) => setText(e.target.value)}
+        className="mt-2 w-full rounded-lg border border-hairline bg-raised p-3 text-sm" />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span data-testid="interests-remaining"
+          className={left < 0 ? 'text-[13px] text-amber-300' : 'text-[13px] text-muted'}>{left} left</span>
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" data-testid="interests-clear" disabled={!text && !saved}
+            onClick={() => (saved ? save('') : setText(''))}>Clear</Button>
+          <Button size="sm" variant="primary" data-testid="interests-save"
+            disabled={left < 0 || text === saved} onClick={() => save(text)}>Save</Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function HomePage() {
   const { conference } = useConference();
   useDocumentTitle("ORBIT '26");
@@ -137,6 +190,7 @@ export function HomePage() {
     <div className="space-y-8 [&>:empty]:hidden">
       <HeroBar conference={conference} />
       <QuickLinks />
+      <InterestsBox />
       <Reveal><LatestAnnouncement /></Reveal>
       <SponsorMarquee />
     </div>

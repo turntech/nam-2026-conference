@@ -162,13 +162,21 @@ plus `Speakers` buttons) → `QuickLinks` (`quick-links`, a `nav` of the `LINKS`
 array: Schedule, Speakers, Venues, Food & drink, Expo) → `LatestAnnouncement`
 (`announcements`: the single newest posted one, pinned first, filtered by
 `postedAt <= clock`, so nothing appears before it was written) →
-`SponsorMarquee` (venues doc). Sections that return `null` would leave their
+`InterestsBox` (below) → `SponsorMarquee` (venues doc). Sections that return `null` would leave their
 `<Reveal>` wrapper as a gap, so the container has `[&>:empty]:hidden`.
 `tests/home.spec.js` asserts the five links, the announcement cut-off, and that
 none of `today-panel`, `live-now`, `speaking-strip`, `followed-sessions`, `next-up`
 is on the page — no component renders those ids; a ticket that puts a personal or
 live section on Home updates that test. A new home section is a component that
 returns `null` when empty, wrapped in `<Reveal>`.
+
+**`InterestsBox`** (`interests-box`) — the one thing on Home about the attendee: an
+optional textarea (`interests-input`, 500-character `NOTE_LIMIT`, counted by code
+point) with `interests-remaining` ("N left"), `interests-save` (disabled over the
+limit or when unchanged) and `interests-clear`. It reads and writes only
+`GET/PUT /api/users/:id/interest-note` (`getInterestNote`, `saveInterestNote`;
+seats doc) for `currentUserId` and reads nothing about seats, so it shows with
+zero seats. The text is in no other payload and not on My Agenda.
 
 **`RouteChange`** — on `pathname` change only (not search), scrolls to top and
 focuses `#main`. **`NotFoundPage`** — the `*` route; its heading "Nothing
