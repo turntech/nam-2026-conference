@@ -27,7 +27,7 @@ available right now" and the rest of Home, including the interests box, works as
 - `src/lib/api.js` — `askAssistant(userId, question)`, the only `fetch` caller.
 - `src/pages/HomePage.jsx` — new `AskBox` after `InterestsBox` (testids `ask-box`, `ask-input`,
   `ask-submit`, `ask-results`, `ask-result` per link, `ask-empty`, `ask-unavailable`). Local state
-  only; results link with `<Link to={`/schedule/${id}`}>` (confirm the detail route in `App.jsx`).
+  only; results link with `<Link to={`/sessions/${id}`}>` (the detail route in `App.jsx`).
   Day and time rendered with `format.js`, never `new Date()`.
 - Tests: API `tests/api/ask.test.js` using `startApi`, with a local `node:http` stub set as
   `OPENROUTER_BASE_URL` and `OPENROUTER_API_KEY=test-key` before `startApi`; spec
